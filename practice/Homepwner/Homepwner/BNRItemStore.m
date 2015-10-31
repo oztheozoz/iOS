@@ -8,11 +8,15 @@
 
 #import "BNRItemStore.h"
 #import "BNRItem.h"
+#import "BNRImageStore.h"
+
 @interface BNRItemStore ()
 @property (nonatomic) NSMutableArray *privateItems;
 @end
 
 @implementation BNRItemStore
+
+#pragma mark - Class life cycle
 + (instancetype)sharedStore {
     static BNRItemStore *sharedStore;
     
@@ -42,6 +46,7 @@
     return self;
 }
 
+#pragma mark - Actions
 - (NSArray *)allItems {
     return  [self.privateItems copy];
 }
@@ -52,6 +57,28 @@
     [self.privateItems addObject:item];
     
     return item;
+}
+
+- (void)removeItem:(BNRItem *)item {
+    NSString *key = item.itemKey;
+    
+    [[BNRImageStore sharedStore] deleteImageForKey:key];
+    
+    [self.privateItems removeObjectIdenticalTo:item];
+}
+
+- (void)moveItemAtIndex:(NSUInteger)fromIndex toIndex:(NSUInteger)toIndex {
+    if (fromIndex == toIndex) {
+        return;
+    }
+    // Get pointer to object being moved so you can re-insert it
+    BNRItem *item = self.privateItems[fromIndex];
+    
+    // Remove item from array
+    [self.privateItems removeObjectAtIndex:fromIndex];
+    
+    // Insert item in array at new location
+    [self.privateItems insertObject:item atIndex:toIndex];
 }
 @end
 
