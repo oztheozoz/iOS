@@ -10,8 +10,13 @@
 #import "BNRItemStore.h"
 #import "BNRItem.h"
 #import "BNRDetailViewController.h"
+#import "BNRItemCell.h"
+#import "BNRItemCell.h"
+#import "BNRImageStore.h"
+#import "BNRImageViewController.h"
 
-@interface BNRItemsViewController () <UITableViewDataSource, UITableViewDelegate>
+@interface BNRItemsViewController () <UITableViewDataSource, UITableViewDelegate, UIPopoverControllerDelegate>
+@property (strong, nonatomic) UIPopoverController *imagePopover;
 @end
 
 @implementation BNRItemsViewController
@@ -47,6 +52,7 @@
     // Create a new BNRItem and add it to the store
     BNRItem *newItem = [[BNRItemStore sharedStore] createItem];
     
+    /*
     // Figure out where that item is in the array
     NSInteger lastRow = [[[BNRItemStore sharedStore] allItems] indexOfObject:newItem];
     
@@ -54,6 +60,22 @@
     
     // Insert this new row into the table.
     [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationTop];
+     */
+    
+    BNRDetailViewController *detailViewController = [[BNRDetailViewController alloc] initForNewItem:YES];
+    
+    detailViewController.item = newItem;
+    
+    detailViewController.dismissBlock = ^{
+        [self.tableView reloadData];
+    };
+    
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:detailViewController];
+    
+    navController.modalPresentationStyle = UIModalPresentationFormSheet;
+    
+    navController.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
+    [self presentViewController:navController animated:YES completion:NULL];
 }
 
 - (IBAction)toggleEditingMode:(id)sender {
@@ -76,23 +98,60 @@
 #pragma mark - Table view data source
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     NSLog(@"section = %ld", section);
-    return [[[BNRItemStore sharedStore] allItems] count] + 1;
+    return [[[BNRItemStore sharedStore] allItems] count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"UITableViewCell" forIndexPath:indexPath];
+    //UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"UITableViewCell" forIndexPath:indexPath];
     
-    if (indexPath.row == [[[BNRItemStore sharedStore] allItems] count]) {
-        cell.textLabel.text = @"No more items";
-    } else {
-        // Set the text on the cell with the description of the item
-        // that is at the nth index of items, where n = row this cell
-        // will appear in on the tableview
-        NSArray *items = [[BNRItemStore sharedStore] allItems];
-        BNRItem *item = items[indexPath.row];
+    // Get a new or recycled cell
+    BNRItemCell *cell = [tableView dequeueReusableCellWithIdentifier:@"BNRItemCell" forIndexPath:indexPath];
+
+    // Set the text on the cell with the description of the item
+    // that is at the nth index of items, where n = row this cell
+    // will appear in on the tableview
+    NSArray *items = [[BNRItemStore sharedStore] allItems];
+    BNRItem *item = items[indexPath.row];
+    
+    //cell.textLabel.text = [item description];
+    
+    // Configure the cell with the BNRItem
+    cell.nameLabel.text = item.itemName;
+    cell.serialNumberLabel.text = item.serialNumber;
+    cell.valueLabel.text = [NSString stringWithFormat:@"$%d", item.valueInDollars];
+    cell.thumbnailView.image = item.thumbnail;
+    
+    __weak BNRItemCell *weakCell = cell;
+    cell.actionBlock = ^{
+        NSLog(@"Going to show image for %@", item);
         
-        cell.textLabel.text = [item description];
-    }
+        BNRItemCell *strongCell = weakCell;
+        
+        if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+            NSString *itemKey = item.itemKey;
+            
+            // If there is no image, we don't need to display anything
+            UIImage *img = [[BNRImageStore sharedStore] imageForKey:itemKey];
+            if (!img) {
+                return;
+            }
+            
+            // Make a rectangle for the frame of the thumbnail relative to
+            // our table view
+            // Note: there will be a warning on this line that we'll soon discuss
+            CGRect rect = [self.view convertRect:strongCell.thumbnailView.bounds fromView:strongCell.thumbnailView];
+            
+            // Create a new BNRImageViewController and set its image
+            BNRImageViewController *ivc = [[BNRImageViewController alloc] init];
+            ivc.image = img;
+            
+            // Present a 600x600 popover from the rect
+            self.imagePopover = [[UIPopoverController alloc] initWithContentViewController:ivc];
+            self.imagePopover.delegate = self;
+            self.imagePopover.popoverContentSize = CGSizeMake(600, 600);
+            [self.imagePopover presentPopoverFromRect:rect inView:self.view permittedArrowDirections:UIPopoverArrowDirectionAny animated:YES];
+        }
+    };
     return cell;
 }
 
@@ -140,17 +199,28 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"UITableViewCell"];
+    //[self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"UITableViewCell"];
+    
+    // Load the NIB file
+    UINib *nib = [UINib nibWithNibName:@"BNRItemCell" bundle:nil];
+    
+    // Register this NIB, which contains the cell
+    [self.tableView registerNib:nib forCellReuseIdentifier:@"BNRItemCell"];
 }
 
 #pragma mark - Table view delegate
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    BNRDetailViewController *detailViewController = [[BNRDetailViewController alloc] init];
+    BNRDetailViewController *detailViewController = [[BNRDetailViewController alloc] initForNewItem:NO];
     NSArray *items = [[BNRItemStore sharedStore] allItems];
     BNRItem *item = items[indexPath.row];
     detailViewController.item = item;
     
     // Push it onto the top of the navigation controller's stack
     [self.navigationController pushViewController:detailViewController animated:YES];
+}
+
+#pragma mark - Popover controller delegate
+- (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController {
+    self.imagePopover = nil;
 }
 @end

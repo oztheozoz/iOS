@@ -23,7 +23,11 @@
     self.window.rootViewController = dvc;
     self.window.backgroundColor = [UIColor whiteColor];
     [self.window makeKeyAndVisible];
-    // Override point for customization after application launch.
+    
+#ifdef VIEW_DEBUG
+    NSLog(@"%@", [self.window performSelector:@selector(recursiveDescription)]);
+#endif
+    
     return YES;
 }
 

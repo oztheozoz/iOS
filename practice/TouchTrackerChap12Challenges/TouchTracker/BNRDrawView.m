@@ -46,6 +46,7 @@ typedef struct {
     [bp moveToPoint:line.begin];
     [bp addLineToPoint:line.end];
     NSLog(@"Draw line from (%.1f, %.1f) to (%.1f, %.1f)", line.begin.x, line.begin.y, line.end.x, line.end.y);
+
     [bp stroke];
 }
 
@@ -113,9 +114,9 @@ typedef struct {
         NSLog(@"Touches began location (x,y) = (%.1f, %.1f)", location.x, location.y);
         
         BNRLine *line = [[BNRLine alloc] init];
+        line.points = [[NSMutableArray alloc] init];
         line.begin = location;
         line.end = location;
-        
         self.linesInProgress[key] = line;
     }
     
@@ -136,8 +137,8 @@ typedef struct {
         } else {
         
         BNRLine *line = self.linesInProgress[key];
-        
-        line.end = [t locationInView:self];
+        CGPoint location = [t locationInView:self];
+        line.end = location;
         line.angle = [self angleInDegreesOf:line];
         NSLog(@"Touches moved location (x,y) = (%.1f, %.1f)", line.end.x, line.end.y);
         }
@@ -150,6 +151,19 @@ typedef struct {
     // Let's put in a log statement to see the order of events
     NSLog(@"%@", NSStringFromSelector(_cmd));
     
+    [self cleanUpTouches:touches];    
+    [self setNeedsDisplay];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    // Let's put in a log statement to see the order of events
+    NSLog(@"%@", NSStringFromSelector(_cmd));
+    
+    [self cleanUpTouches:touches];
+    [self setNeedsDisplay];
+}
+
+- (void)cleanUpTouches:(NSSet<UITouch *> *)touches {
     for (UITouch *t in touches) {
         NSValue *key = [NSValue valueWithNonretainedObject:t];
         
@@ -172,23 +186,7 @@ typedef struct {
             [self.linesInProgress removeObjectForKey:key];
         }
     }
-    
-    [self setNeedsDisplay];
 }
-
-- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    // Let's put in a log statement to see the order of events
-    NSLog(@"%@", NSStringFromSelector(_cmd));
-    
-    for (UITouch *t in touches) {
-        NSValue *key = [NSValue valueWithNonretainedObject:t];
-        [self.linesInProgress removeObjectForKey:key];
-        [self.first2SimultaneousTouches removeObjectForKey:key];
-    }
-    
-    [self setNeedsDisplay];
-}
-
 - (float)angleInDegreesOf:(BNRLine *)line {
     float opposite = line.end.y - line.begin.y;
     float adjacent = line.end.x - line.begin.x;
@@ -229,5 +227,12 @@ typedef struct {
         aCircle.radius = sqrtf(powf(aCircle.center.x - location[0].x, 2) + powf(aCircle.center.y - location[0].y, 2));
         self.circleInProgress = aCircle;
     }
+}
+
+- (void)clearScreen {
+    [self.finishedCircles removeAllObjects];
+    [self.finishedLines removeAllObjects];
+    
+    [self setNeedsDisplay];
 }
 @end

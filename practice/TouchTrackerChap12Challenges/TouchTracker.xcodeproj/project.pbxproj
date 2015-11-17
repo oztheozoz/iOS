@@ -481,6 +481,7 @@
 				9136E5B91BE19D77006B267E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		9136E5BA1BE19D77006B267E /* Build configuration list for PBXNativeTarget "TouchTrackerTests" */ = {
 			isa = XCConfigurationList;
@@ -489,6 +490,7 @@
 				9136E5BC1BE19D77006B267E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		9136E5BD1BE19D77006B267E /* Build configuration list for PBXNativeTarget "TouchTrackerUITests" */ = {
 			isa = XCConfigurationList;
@@ -497,6 +499,7 @@
 				9136E5BF1BE19D77006B267E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
